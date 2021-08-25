@@ -3,6 +3,7 @@ from django.db import models
 from django.core.validators import RegexValidator
 from django.shortcuts import resolve_url
 
+
 class User(AbstractUser):
     class GenderChoices(models.TextChoices):
         MALE = "M", "남성"
