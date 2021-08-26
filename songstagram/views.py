@@ -12,21 +12,25 @@ from .models import Post
 @login_required
 def index(request):
     timesince = timezone.now() - timedelta(days=3)
-    post_list = Post.objects.all()\
-        .filter(
-            Q(author=request.user) |
-            Q(author__in=request.user.following_set.all())
-        )\
-        .filter(
-            created_at__gte=timesince
-        )
-    suggested_user_list = get_user_model().objects.all()\
-        .exclude(pk=request.user.pk)\
+    post_list = (
+        Post.objects.all()
+        .filter(Q(author=request.user) | Q(author__in=request.user.following_set.all()))
+        .filter(created_at__gte=timesince)
+    )
+    suggested_user_list = (
+        get_user_model()
+        .objects.all()
+        .exclude(pk=request.user.pk)
         .exclude(pk__in=request.user.following_set.all())[:3]
-    return render(request, "songstagram/index.html", {
-        "post_list": post_list,
-        "suggested_user_list": suggested_user_list,
-    })
+    )
+    return render(
+        request,
+        "songstagram/index.html",
+        {
+            "post_list": post_list,
+            "suggested_user_list": suggested_user_list,
+        },
+    )
 
 
 @login_required
@@ -63,6 +67,24 @@ def post_detail(request, pk):
     )
 
 
+@login_required
+def post_like(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    post.like_user_set.add(request.user)
+    messages.success(request, f"포스팅#{post.pk}를 좋아합니다.")
+    redirect_url = request.META.get("HTTP_REFERER", "root")
+    return redirect(redirect_url)
+
+
+@login_required
+def post_unlike(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    post.like_user_set.remove(request.user)
+    messages.success(request, f"포스팅#{post.pk}의 좋아요를 취소합니다.")
+    redirect_url = request.META.get("HTTP_REFERER", "root")
+    return redirect(redirect_url)
+
+
 def user_page(request, username):
     page_user = get_object_or_404(get_user_model(), username=username, is_active=True)
     post_list = Post.objects.filter(author=page_user)
@@ -78,6 +100,6 @@ def user_page(request, username):
             "page_user": page_user,
             "post_list": post_list,
             "post_list_count": post_list_count,
-            "is_follow": is_follow
+            "is_follow": is_follow,
         },
     )
